@@ -303,6 +303,29 @@ router.post("/start-game", async (req, res) => {
     updates["votes/eliminatedPlayerId"] = null;
     updates["votes/votingEndTime"] = null;
     updates["endGameVotes"] = null;
+    updates["gameState/activeTicket"] = null;
+
+    // Ticket logic for Turn 1
+    const ticketConfig = settings.ticketConfig || {};
+    if (ticketConfig.enabled) {
+        const chance = ticketConfig.randomChancePercent || 20;
+        if (Math.random() * 100 < chance) {
+            const ticketSnap = await db.ref("ticketDatabase").once("value");
+            const allTickets = ticketSnap.val();
+            if (allTickets) {
+                const ticketIds = Object.keys(allTickets);
+                const randomId = ticketIds[Math.floor(Math.random() * ticketIds.length)];
+                const chosenTicket = allTickets[randomId];
+                updates["gameState/activeTicket"] = {
+                    ticketId: randomId,
+                    name: chosenTicket.name,
+                    description: chosenTicket.description,
+                    imageUrl: chosenTicket.imageUrl,
+                    drawnAt: Date.now()
+                };
+            }
+        }
+    }
 
     await roomRef.update(updates);
     res.status(200).json({ success: true });
@@ -359,12 +382,38 @@ router.post("/next-turn", async (req, res) => {
             "votes/ballots": null
         });
     } else {
-        await roomRef.update({
+        const nextTurnCount = gs.turnCount + 1;
+        const updates = {
           "gameState/turnIndex": nextIndex,
           "gameState/currentTurnPlayerId": nextPlayerId,
-          "gameState/turnCount": gs.turnCount + 1,
-          "gameState/timerStartedAt": Date.now()
-        });
+          "gameState/turnCount": nextTurnCount,
+          "gameState/timerStartedAt": Date.now(),
+          "gameState/activeTicket": null
+        };
+
+        // Ticket logic for Next Turn
+        const ticketConfig = roomData.settings?.ticketConfig || {};
+        if (ticketConfig.enabled) {
+            const chance = ticketConfig.randomChancePercent || 20;
+            if (Math.random() * 100 < chance) {
+                const ticketSnap = await db.ref("ticketDatabase").once("value");
+                const allTickets = ticketSnap.val();
+                if (allTickets) {
+                    const ticketIds = Object.keys(allTickets);
+                    const randomId = ticketIds[Math.floor(Math.random() * ticketIds.length)];
+                    const chosenTicket = allTickets[randomId];
+                    updates["gameState/activeTicket"] = {
+                        ticketId: randomId,
+                        name: chosenTicket.name,
+                        description: chosenTicket.description,
+                        imageUrl: chosenTicket.imageUrl,
+                        drawnAt: Date.now()
+                    };
+                }
+            }
+        }
+
+        await roomRef.update(updates);
     }
 
     res.status(200).json({ success: true });
