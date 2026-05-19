@@ -12,7 +12,7 @@ app.use(express.json());
 // Routes
 app.use("/api/rooms", roomRoutes);
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const http = require('http');
 const server = http.createServer(app);
 server.listen(PORT, () => {

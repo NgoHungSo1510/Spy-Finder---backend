@@ -1,16 +1,23 @@
+require("dotenv").config();
 const admin = require("firebase-admin");
 const path = require("path");
 
-// Yêu cầu bạn tải file serviceAccountKey.json từ Firebase Console (Project Settings > Service Accounts > Generate new private key)
-// và đặt vào thư mục backend/
 let serviceAccount;
-try {
-  serviceAccount = require(path.join(__dirname, "serviceAccountKey.json"));
-} catch (error) {
-  console.error("⚠️ CHƯA TÌM THẤY file serviceAccountKey.json!");
-  console.error("Vui lòng tải từ Firebase Console và đặt vào thư mục backend/");
-  // Tạo 1 object rỗng để không bị crash khi compile, nhưng khi dùng sẽ báo lỗi.
-  serviceAccount = {};
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (err) {
+    console.error("❌ Lỗi khi parse FIREBASE_SERVICE_ACCOUNT từ Env Variable:", err);
+    serviceAccount = {};
+  }
+} else {
+  try {
+    serviceAccount = require(path.join(__dirname, "serviceAccountKey.json"));
+  } catch (error) {
+    console.error("⚠️ CHƯA TÌM THẤY file serviceAccountKey.json và FIREBASE_SERVICE_ACCOUNT!");
+    serviceAccount = {};
+  }
 }
 
 admin.initializeApp({
